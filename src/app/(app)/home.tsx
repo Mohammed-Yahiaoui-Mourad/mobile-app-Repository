@@ -7,15 +7,14 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
-  Dimensions,
   TextInput,
-  Platform,
+  Dimensions,
 } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useBlood } from '@/hooks/useBlood';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Spacing, Border, Typography } from '@/constants/theme';
+import { Spacing, Border, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -96,7 +95,7 @@ export default function HomeScreen() {
           }}]
         );
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Unable to broadcast blood request.');
     } finally {
       setIsSubmitting(false);
@@ -138,15 +137,6 @@ export default function HomeScreen() {
     );
   };
 
-  const getLastDonationText = () => {
-    if (!user || !user.lastDonationDate) return 'Never';
-    const lastDate = new Date(user.lastDonationDate);
-    const diffTime = Math.abs(Date.now() - lastDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const months = Math.floor(diffDays / 30);
-    return months > 0 ? `${months} months` : `${diffDays} days`;
-  };
-
   return (
     <View style={{ flex: 1 }}>
       <ScrollView style={[styles.scrollView, { backgroundColor: theme.background }]}>
@@ -164,6 +154,27 @@ export default function HomeScreen() {
               <Ionicons name="person" size={20} color={theme.primary} />
             </View>
           </View>
+
+          <ThemedView type="surface" style={styles.statusPanel}>
+            <View style={styles.statusPanelHeader}>
+              <View>
+                <ThemedText type="smallBold" themeColor="textSecondary">Donor Status</ThemedText>
+                <ThemedText style={styles.statusPanelTitle}>
+                  {user?.isAvailable ? 'Available for emergency matching' : 'Temporarily paused'}
+                </ThemedText>
+              </View>
+              <Switch
+                trackColor={{ false: theme.border, true: theme.primary + '80' }}
+                thumbColor={user?.isAvailable ? theme.primary : '#f4f3f4'}
+                ios_backgroundColor="#3e3e3e"
+                onValueChange={toggleAvailability}
+                value={user?.isAvailable}
+              />
+            </View>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.statusPanelText}>
+              Hospitals can only notify you while this status is active.
+            </ThemedText>
+          </ThemedView>
 
           {/* Quick Actions Panel */}
           <Card style={[styles.quickActionsCard, { backgroundColor: theme.surface }]}>
@@ -189,61 +200,6 @@ export default function HomeScreen() {
               </View>
             </Card.Content>
           </Card>
-
-          {/* Bento Grid Stats */}
-          <View style={styles.bentoGrid}>
-            {/* Blood Type Card */}
-            <ThemedView type="surface" style={[styles.bentoCard, styles.leftAccentCard, { borderLeftColor: theme.primary }]}>
-              <ThemedText type="smallBold" themeColor="textSecondary">Blood Type</ThemedText>
-              <View style={styles.cardInfoRow}>
-                <ThemedText style={[styles.largeText, { color: theme.primary }]}>
-                  {user?.bloodType || 'O-'}
-                </ThemedText>
-                <Ionicons name="water" size={32} color={theme.primary} />
-              </View>
-            </ThemedView>
-
-            {/* Eligibility Card */}
-            <ThemedView type="surface" style={styles.bentoCard}>
-              <ThemedText type="smallBold" themeColor="textSecondary">Eligibility</ThemedText>
-              <View style={styles.cardInfoCol}>
-                <View style={[styles.statusChip, { backgroundColor: theme.tertiary + '1A' }]}>
-                  <ThemedText type="smallBold" style={{ color: theme.tertiary, fontSize: 12 }}>
-                    Eligible
-                  </ThemedText>
-                </View>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.cardDesc}>
-                  Ready to donate
-                </ThemedText>
-              </View>
-            </ThemedView>
-
-            {/* Availability Card */}
-            <ThemedView type="surface" style={styles.bentoCard}>
-              <ThemedText type="smallBold" themeColor="textSecondary">Availability</ThemedText>
-              <View style={styles.cardInfoRow}>
-                <ThemedText type="smallBold" style={styles.availabilityStatus}>
-                  {user?.isAvailable ? 'Active' : 'Paused'}
-                </ThemedText>
-                <Switch
-                  trackColor={{ false: theme.border, true: theme.primary + '80' }}
-                  thumbColor={user?.isAvailable ? theme.primary : '#f4f3f4'}
-                  ios_backgroundColor="#3e3e3e"
-                  onValueChange={toggleAvailability}
-                  value={user?.isAvailable}
-                />
-              </View>
-            </ThemedView>
-
-            {/* Last Donation Card */}
-            <ThemedView type="surface" style={styles.bentoCard}>
-              <ThemedText type="smallBold" themeColor="textSecondary">Last Donation</ThemedText>
-              <View style={styles.cardInfoCol}>
-                <ThemedText style={styles.medText}>{getLastDonationText()}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">ago</ThemedText>
-              </View>
-            </ThemedView>
-          </View>
 
           {/* Urgent Nearby Requests Section */}
           <View style={styles.sectionHeader}>
@@ -543,6 +499,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e1e3e6',
   },
+  statusPanel: {
+    borderRadius: Border.radiusLg,
+    padding: Spacing.three,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statusPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    alignItems: 'center',
+  },
+  statusPanelTitle: {
+    marginTop: Spacing.half,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  statusPanelText: {
+    marginTop: Spacing.one,
+    lineHeight: 18,
+  },
   quickActionsCard: {
     borderRadius: Border.radiusMd,
     shadowColor: '#000',
@@ -578,59 +558,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: Spacing.one,
     textAlign: 'center',
-  },
-  bentoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-  bentoCard: {
-    width: (Dimensions.get('window').width - Spacing.four * 2 - Spacing.three) / 2,
-    borderRadius: Border.radiusMd,
-    padding: Spacing.three,
-    height: 110,
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  leftAccentCard: {
-    borderLeftWidth: 4,
-  },
-  cardInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardInfoCol: {
-    justifyContent: 'flex-end',
-    flex: 1,
-    marginTop: Spacing.one,
-  },
-  largeText: {
-    fontSize: 32,
-    fontWeight: '700',
-  },
-  medText: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  statusChip: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
-    borderRadius: Border.radiusFull,
-    alignSelf: 'flex-start',
-    marginBottom: Spacing.half,
-  },
-  cardDesc: {
-    fontSize: 12,
-  },
-  availabilityStatus: {
-    fontSize: 16,
-    fontWeight: '700',
   },
   sectionHeader: {
     flexDirection: 'row',
