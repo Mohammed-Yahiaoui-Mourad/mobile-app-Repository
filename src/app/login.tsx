@@ -16,6 +16,8 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing, Border, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 export default function LoginScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -56,132 +58,134 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.keyboardContainer}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <ThemedView style={styles.container}>
-          {/* Logo / Hero Area */}
-          <View style={styles.logoSection}>
-            <View style={[styles.logoIcon, { backgroundColor: theme.primary }]}>
-              <ThemedText style={styles.logoSymbol}>A</ThemedText>
-            </View>
-            <ThemedText style={styles.brandTitle}>VITAL LIFE / AMAL</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.brandSubtitle}>
-              Every Drop Counts. Every Second Matters.
-            </ThemedText>
-          </View>
-
-          {/* Form Card */}
-          <ThemedView type="surface" style={styles.formCard}>
-            <ThemedText style={styles.formTitle}>
-              {isRegistering ? 'Create Donor Account' : 'Sign In as Donor'}
-            </ThemedText>
-            
-            {error && (
-              <View style={[styles.errorContainer, { backgroundColor: theme.error + '1A' }]}>
-                <ThemedText style={[styles.errorText, { color: theme.error }]}>
-                  {error}
-                </ThemedText>
+    <SafeAreaView style={[styles.keyboardContainer, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+          <ThemedView style={styles.container}>
+            {/* Logo / Hero Area */}
+            <View style={styles.logoSection}>
+              <View style={[styles.logoIcon, { backgroundColor: theme.primary }]}>
+                <ThemedText style={styles.logoSymbol}>A</ThemedText>
               </View>
-            )}
+              <ThemedText style={styles.brandTitle}>VITAL LIFE / AMAL</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.brandSubtitle}>
+                Every Drop Counts. Every Second Matters.
+              </ThemedText>
+            </View>
 
-            {isRegistering && (
+            {/* Form Card */}
+            <ThemedView type="surface" style={styles.formCard}>
+              <ThemedText style={styles.formTitle}>
+                {isRegistering ? 'Create Donor Account' : 'Sign In as Donor'}
+              </ThemedText>
+              
+              {error && (
+                <View style={[styles.errorContainer, { backgroundColor: theme.error + '1A' }]}>
+                  <ThemedText style={[styles.errorText, { color: theme.error }]}>
+                    {error}
+                  </ThemedText>
+                </View>
+              )}
+
+              {isRegistering && (
+                <View style={styles.inputGroup}>
+                  <ThemedText type="smallBold" style={styles.inputLabel}>
+                    Full Name
+                  </ThemedText>
+                  <TextInput
+                    style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                    placeholder="Sarah Connor"
+                    placeholderTextColor={theme.textSecondary}
+                    value={name}
+                    onChangeText={(text) => {
+                      setName(text);
+                      setError(null);
+                    }}
+                    autoCapitalize="words"
+                  />
+                </View>
+              )}
+
               <View style={styles.inputGroup}>
                 <ThemedText type="smallBold" style={styles.inputLabel}>
-                  Full Name
+                  Email Address
                 </ThemedText>
                 <TextInput
                   style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
-                  placeholder="Sarah Connor"
+                  placeholder="example@amal.org"
                   placeholderTextColor={theme.textSecondary}
-                  value={name}
+                  value={email}
                   onChangeText={(text) => {
-                    setName(text);
+                    setEmail(text);
                     setError(null);
                   }}
-                  autoCapitalize="words"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
-            )}
 
-            <View style={styles.inputGroup}>
-              <ThemedText type="smallBold" style={styles.inputLabel}>
-                Email Address
-              </ThemedText>
-              <TextInput
-                style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
-                placeholder="example@amal.org"
-                placeholderTextColor={theme.textSecondary}
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  setError(null);
-                }}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <ThemedText type="smallBold" style={styles.inputLabel}>
-                Password
-              </ThemedText>
-              <TextInput
-                style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
-                placeholder="••••••••••••"
-                placeholderTextColor={theme.textSecondary}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  setError(null);
-                }}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.authButton, { backgroundColor: theme.primary }]}
-              onPress={handleAuth}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#ffffff" size="small" />
-              ) : (
-                <ThemedText style={styles.authButtonText}>
-                  {isRegistering ? 'Register & Set Available' : 'Sign In Now'}
+              <View style={styles.inputGroup}>
+                <ThemedText type="smallBold" style={styles.inputLabel}>
+                  Password
                 </ThemedText>
-              )}
-            </TouchableOpacity>
+                <TextInput
+                  style={[styles.textInput, { borderColor: theme.border, color: theme.text }]}
+                  placeholder="••••••••••••"
+                  placeholderTextColor={theme.textSecondary}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setError(null);
+                  }}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
 
-            <TouchableOpacity
-              style={styles.toggleButton}
-              onPress={() => {
-                setIsRegistering(!isRegistering);
-                setError(null);
-              }}
-            >
-              <ThemedText type="small" style={{ color: theme.primary, textAlign: 'center' }}>
-                {isRegistering
-                  ? 'Already have an account? Sign In'
-                  : "Don't have an account? Sign Up"}
+              <TouchableOpacity
+                style={[styles.authButton, { backgroundColor: theme.primary }]}
+                onPress={handleAuth}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <ThemedText style={styles.authButtonText}>
+                    {isRegistering ? 'Register & Set Available' : 'Sign In Now'}
+                  </ThemedText>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.toggleButton}
+                onPress={() => {
+                  setIsRegistering(!isRegistering);
+                  setError(null);
+                }}
+              >
+                <ThemedText type="small" style={{ color: theme.primary, textAlign: 'center' }}>
+                  {isRegistering
+                    ? 'Already have an account? Sign In'
+                    : "Don't have an account? Sign Up"}
+                </ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+
+            {/* Quick Mock Access Info */}
+            <View style={styles.mockInfo}>
+              <ThemedText type="code" themeColor="textSecondary" style={styles.mockInfoText}>
+                Mock User: sarah.connor@amal.org / password123
               </ThemedText>
-            </TouchableOpacity>
+            </View>
           </ThemedView>
-
-          {/* Quick Mock Access Info */}
-          <View style={styles.mockInfo}>
-            <ThemedText type="code" themeColor="textSecondary" style={styles.mockInfoText}>
-              Mock User: sarah.connor@amal.org / password123
-            </ThemedText>
-          </View>
-        </ThemedView>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

@@ -4,10 +4,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AppLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   // If the authentication check is still loading, show a loading spinner
   if (isLoading) {
@@ -32,8 +34,8 @@ export default function AppLayout() {
           backgroundColor: theme.surface,
           borderTopColor: theme.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
