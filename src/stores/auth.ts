@@ -1,32 +1,42 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import * as SecureStore from 'expo-secure-store';
+import { authService, donorService } from '../services/api-service';
+import type { User as ApiUser, DonorProfile } from '../services/api-service';
 
 export interface User {
   id: string;
-  name: string;
   email: string;
-  bloodType: string;
-  isAvailable: boolean;
-  lastDonationDate: string | null;
-  healthClearanceToken: string | null;
-  healthCheckedAt: string | null;
-  location: {
-    latitude: number;
-    longitude: number;
-    address: string;
-  };
+  full_name: string;
+  phone_number: string;
+  role: string;
+  created_at: string;
+}
+
+export interface MobileAuthUser extends User {
+  donor_profile?: DonorProfile;
 }
 
 interface AuthState {
-  user: User | null;
+  user: MobileAuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string) => Promise<boolean>;
+  error: string | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (data: {
+    email: string;
+    password: string;
+    full_name: string;
+    phone_number: string;
+    blood_type: string;
+    latitude: number;
+    longitude: number;
+  }) => Promise<boolean>;
   logout: () => Promise<void>;
-  updateAvailability: (isAvailable: boolean) => void;
-  updateHealthClearance: (token: string | null, date: string | null) => void;
+  updateAvailability: (isAvailable: boolean) => Promise<void>;
+  initializeAuth: () => Promise<void>;
   setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
 const secureStorage = {
@@ -55,74 +65,153 @@ const secureStorage = {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      error: null,
       setLoading: (loading) => set({ isLoading: loading }),
-      login: async (email: string) => {
-        set({ isLoading: true });
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 800));
+      setError: (error) => set({ error }),
 
-        // Mock donor profile matching backend schemas
-        const mockUser: User = {
-          id: 'donor_123',
-          name: 'Sarah Connor',
-          email: email.toLowerCase(),
-          bloodType: 'O-',
-          isAvailable: true,
-          lastDonationDate: '2026-03-15',
-          healthClearanceToken: null,
-          healthCheckedAt: null,
-          location: {
-            latitude: 36.7538,
-            longitude: 3.0588, // Algiers coordinates
-            address: 'Didouche Mourad St, Algiers',
-          },
-        };
+      login: async (email: string, password: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          // Call backend login
+          const response = await authService.login(email, password);
+          
+          // Store token
+          await authService.setToken(response.access_token);
+          
+          // Fetch user profile
+          const profile = await donorService.getProfile();
+          
+          // Build user object
+          const user: MobileAuthUser = {
+            id: profile.user_id,
+            email: email,
+            full_name: email.split('@')[0],
+            phone_number: '',
+            role: 'user',
+            created_at: new Date().toISOString(),
+            donor_profile: profile,
+          };
 
-        set({
-          user: mockUser,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        return true;
+          set({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        } catch (error: any) {
+          const errorMessage = error.message || 'Login failed';
+          set({ 
+            error: errorMessage, 
+            isLoading: false,
+            isAuthenticated: false 
+          });
+          return false;
+        }
       },
+
+      register: async (data) => {
+        try {
+          set({ isLoading: true, error: null });
+          
+          const newUser = await authService.register(data);
+          
+          // Auto-login after registration
+          return await get().login(data.email, data.password);
+        } catch (error: any) {
+          const errorMessage = error.message || 'Registration failed';
+          set({ error: errorMessage, isLoading: false });
+          return false;
+        }
+      },
+
       logout: async () => {
-        set({ isLoading: true });
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
+        try {
+          set({ isLoading: true });
+          await authService.logout();
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
+          });
+        } catch (error: any) {
+          console.error('Logout error:', error);
+          // Still clear local state even if logout fails
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+        }
       },
-      updateAvailability: (isAvailable: boolean) => {
-        set((state) => {
-          if (!state.user) return state;
-          return {
-            user: { ...state.user, isAvailable },
-          };
-        });
+
+      updateAvailability: async (isAvailable: boolean) => {
+        try {
+          set({ isLoading: true, error: null });
+          const updatedProfile = await donorService.updateAvailability(isAvailable);
+          
+          set((state) => {
+            if (!state.user) return state;
+            return {
+              user: {
+                ...state.user,
+                donor_profile: updatedProfile,
+              },
+              isLoading: false,
+            };
+          });
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Failed to update availability',
+            isLoading: false 
+          });
+        }
       },
-      updateHealthClearance: (token: string | null, date: string | null) => {
-        set((state) => {
-          if (!state.user) return state;
-          return {
-            user: {
-              ...state.user,
-              healthClearanceToken: token,
-              healthCheckedAt: date,
-            },
-          };
-        });
+
+      initializeAuth: async () => {
+        try {
+          set({ isLoading: true });
+          const isAuth = await authService.isAuthenticated();
+          
+          if (isAuth) {
+            const profile = await donorService.getProfile();
+            const token = await authService.getToken();
+            
+            if (token && profile) {
+              const user: MobileAuthUser = {
+                id: profile.user_id,
+                email: 'user@email.com', // Would need to fetch from token decode or /me endpoint
+                full_name: 'User',
+                phone_number: '',
+                role: 'user',
+                created_at: new Date().toISOString(),
+                donor_profile: profile,
+              };
+              
+              set({
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+              return;
+            }
+          }
+          
+          set({ isAuthenticated: false, isLoading: false });
+        } catch (error) {
+          console.error('Auth initialization error:', error);
+          set({ isAuthenticated: false, isLoading: false });
+        }
       },
     }),
     {
       name: 'amal-auth-storage',
       storage: createJSONStorage(() => secureStorage),
-      // Prevent automatic hydration from blocking if not ready, or handle explicitly
     }
   )
 );
