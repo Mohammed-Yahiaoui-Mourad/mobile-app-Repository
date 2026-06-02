@@ -1,275 +1,201 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { requestService, donorService } from '../services/api-service';
+import type { BloodRequest as ApiBloodRequest, DonationSchedule as ApiDonationSchedule, Invitation as ApiInvitation } from '../services/api-service';
 
 export interface BloodRequest {
   id: string;
-  hospitalName: string;
-  hospitalAddress: string;
-  latitude: number;
-  longitude: number;
-  bloodType: string;
-  urgency: 'HIGH' | 'MEDIUM' | 'LOW';
-  patientCondition: string;
-  unitsRequired: number;
-  unitsCollected: number;
-  createdAt: string;
-  distanceKm: number;
+  patient_name: string;
+  department: string;
+  blood_type: string;
+  units_needed: number;
+  donors_confirmed: number;
+  procedure: string;
+  status: 'pending' | 'active' | 'partially_fulfilled' | 'fulfilled' | 'cancelled';
+  required_by: string;
+  created_at: string;
+  attending_physician: string;
+  requested_by: string;
+  room: string;
+  contact_phone: string;
+  notes: string;
 }
 
 export interface DonationSchedule {
   id: string;
-  hospitalName: string;
-  hospitalAddress: string;
-  date: string;
-  timeSlot: string;
-  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
-  unitsDonated?: number;
+  donor_id: string;
+  request_id: string | null;
+  scheduled_date: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  created_at: string;
 }
 
 export interface Invitation {
   id: string;
-  requestId: string;
-  expiresAt: string;
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
-  request: BloodRequest;
+  donor_id: string;
+  request_id: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  created_at: string;
+  expires_at: string;
 }
 
 interface BloodState {
   requests: BloodRequest[];
-  schedules: DonationSchedule[];
-  invitations: Invitation[];
+  mySchedules: DonationSchedule[];
+  myInvitations: Invitation[];
   isLoading: boolean;
+  error: string | null;
   
   // Actions
-  fetchRequests: () => Promise<void>;
-  respondToInvitation: (invitationId: string, accept: boolean) => Promise<boolean>;
-  scheduleDonation: (hospitalName: string, hospitalAddress: string, date: string, timeSlot: string) => Promise<boolean>;
-  cancelDonation: (scheduleId: string) => Promise<boolean>;
-  createBloodRequest: (
-    recipientName: string,
-    bloodType: string,
-    requiredUnits: number,
-    hospitalName: string,
-    hospitalAddress: string,
-    latitude: number,
-    longitude: number,
-    urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH'
-  ) => Promise<boolean>;
-  resetMockData: () => void;
+  fetchActiveRequests: () => Promise<void>;
+  fetchNearbyRequests: (latitude: number, longitude: number, radiusKm?: number) => Promise<void>;
+  fetchMySchedules: () => Promise<void>;
+  fetchMyInvitations: () => Promise<void>;
+  respondToInvitation: (invitationId: string, accepted: boolean) => Promise<boolean>;
+  scheduleAppointment: (data: { scheduled_date: string; request_id?: string; notes?: string }) => Promise<boolean>;
+  cancelAppointment: (scheduleId: string) => Promise<boolean>;
+  searchByBloodType: (bloodType: string) => Promise<void>;
+  setError: (error: string | null) => void;
 }
-
-const initialRequests: BloodRequest[] = [
-  {
-    id: 'req_001',
-    hospitalName: 'Mustapha Pacha University Hospital',
-    hospitalAddress: 'Place du 1er Mai, Sidi M\'Hamed, Algiers',
-    latitude: 36.7562,
-    longitude: 3.0564,
-    bloodType: 'O-',
-    urgency: 'HIGH',
-    patientCondition: 'Emergency Trauma Surgery (Car accident)',
-    unitsRequired: 3,
-    unitsCollected: 1,
-    createdAt: new Date().toISOString(),
-    distanceKm: 0.8,
-  },
-  {
-    id: 'req_002',
-    hospitalName: 'Nafissa Hamoud Hospital (Parnet)',
-    hospitalAddress: 'Hussein Dey, Algiers',
-    latitude: 36.7389,
-    longitude: 3.0894,
-    bloodType: 'O-',
-    urgency: 'MEDIUM',
-    patientCondition: 'Anemia complications during chemotherapy',
-    unitsRequired: 2,
-    unitsCollected: 0,
-    createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-    distanceKm: 3.5,
-  },
-  {
-    id: 'req_003',
-    hospitalName: 'Bologhine Hospital',
-    hospitalAddress: 'Bologhine, Algiers',
-    latitude: 36.8012,
-    longitude: 3.0392,
-    bloodType: 'O+',
-    urgency: 'LOW',
-    patientCondition: 'Planned orthopedic surgery',
-    unitsRequired: 2,
-    unitsCollected: 2,
-    createdAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-    distanceKm: 5.7,
-  },
-];
-
-const initialInvitations: Invitation[] = [
-  {
-    id: 'inv_001',
-    requestId: 'req_001',
-    expiresAt: new Date(Date.now() + 180 * 1000).toISOString(), // 180 seconds TTL
-    status: 'PENDING',
-    request: initialRequests[0],
-  },
-];
-
-const initialSchedules: DonationSchedule[] = [
-  {
-    id: 'sched_old_1',
-    hospitalName: 'Mustapha Pacha University Hospital',
-    hospitalAddress: 'Place du 1er Mai, Sidi M\'Hamed, Algiers',
-    date: '2026-03-15',
-    timeSlot: '09:30 AM',
-    status: 'COMPLETED',
-    unitsDonated: 1,
-  },
-];
 
 export const useBloodStore = create<BloodState>()(
   persist(
     (set, get) => ({
-      requests: initialRequests,
-      schedules: initialSchedules,
-      invitations: initialInvitations,
+      requests: [],
+      mySchedules: [],
+      myInvitations: [],
       isLoading: false,
+      error: null,
+      setError: (error) => set({ error }),
 
-      fetchRequests: async () => {
-        set({ isLoading: true });
-        // Simulating network fetch
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        set({ isLoading: false });
+      fetchActiveRequests: async () => {
+        try {
+          set({ isLoading: true, error: null });
+          const requests = await requestService.getActiveRequests();
+          set({ requests, isLoading: false });
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Failed to fetch requests',
+            isLoading: false 
+          });
+        }
       },
 
-      respondToInvitation: async (invitationId: string, accept: boolean) => {
-        set({ isLoading: true });
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        
-        const invitation = get().invitations.find((i) => i.id === invitationId);
-        if (!invitation) {
-          set({ isLoading: false });
+      fetchNearbyRequests: async (latitude: number, longitude: number, radiusKm = 50) => {
+        try {
+          set({ isLoading: true, error: null });
+          const requests = await requestService.getNearbyRequests(latitude, longitude, radiusKm);
+          set({ requests, isLoading: false });
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Failed to fetch nearby requests',
+            isLoading: false 
+          });
+        }
+      },
+
+      fetchMySchedules: async () => {
+        try {
+          set({ isLoading: true, error: null });
+          const schedules = await donorService.getMyAppointments();
+          set({ mySchedules: schedules, isLoading: false });
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Failed to fetch schedules',
+            isLoading: false 
+          });
+        }
+      },
+
+      fetchMyInvitations: async () => {
+        try {
+          set({ isLoading: true, error: null });
+          const invitations = await donorService.getPendingInvitations();
+          set({ myInvitations: invitations, isLoading: false });
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Failed to fetch invitations',
+            isLoading: false 
+          });
+        }
+      },
+
+      respondToInvitation: async (invitationId: string, accepted: boolean) => {
+        try {
+          set({ isLoading: true, error: null });
+          await donorService.respondToInvitation(invitationId, accepted);
+          
+          // Update local invitations
+          set((state) => ({
+            myInvitations: state.myInvitations.map((i) =>
+              i.id === invitationId
+                ? { ...i, status: accepted ? 'accepted' : 'rejected' }
+                : i
+            ),
+            isLoading: false,
+          }));
+          return true;
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Failed to respond to invitation',
+            isLoading: false 
+          });
           return false;
         }
+      },
 
-        // Update invitation status
-        set((state) => ({
-          invitations: state.invitations.map((i) =>
-            i.id === invitationId
-              ? { ...i, status: accept ? 'ACCEPTED' : 'DECLINED' }
-              : i
-          ),
-        }));
-
-        if (accept) {
-          // Add to schedules
-          const newSchedule: DonationSchedule = {
-            id: `sched_${Date.now()}`,
-            hospitalName: invitation.request.hospitalName,
-            hospitalAddress: invitation.request.hospitalAddress,
-            date: new Date().toISOString().split('T')[0],
-            timeSlot: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'SCHEDULED',
-          };
-
+      scheduleAppointment: async (data) => {
+        try {
+          set({ isLoading: true, error: null });
+          const schedule = await donorService.scheduleAppointment(data);
+          
+          // Add to local schedules
           set((state) => ({
-            schedules: [newSchedule, ...state.schedules],
-            // Update request collection units
-            requests: state.requests.map((r) =>
-              r.id === invitation.requestId
-                ? { ...r, unitsCollected: r.unitsCollected + 1 }
-                : r
-            ),
+            mySchedules: [schedule, ...state.mySchedules],
+            isLoading: false,
           }));
-        } else {
-          // If declined, simulate cascade: remove request from donor's matches list
-          set((state) => ({
-            requests: state.requests.filter((r) => r.id !== invitation.requestId),
-          }));
+          return true;
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Failed to schedule appointment',
+            isLoading: false 
+          });
+          return false;
         }
-
-        set({ isLoading: false });
-        return true;
       },
 
-      scheduleDonation: async (hospitalName: string, hospitalAddress: string, date: string, timeSlot: string) => {
-        set({ isLoading: true });
-        await new Promise((resolve) => setTimeout(resolve, 800));
-
-        const newSchedule: DonationSchedule = {
-          id: `sched_${Date.now()}`,
-          hospitalName,
-          hospitalAddress,
-          date,
-          timeSlot,
-          status: 'SCHEDULED',
-        };
-
-        set((state) => ({
-          schedules: [newSchedule, ...state.schedules],
-          isLoading: false,
-        }));
-
-        return true;
+      cancelAppointment: async (scheduleId: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          // Assuming backend has a cancel endpoint
+          set((state) => ({
+            mySchedules: state.mySchedules.map((s) =>
+              s.id === scheduleId ? { ...s, status: 'cancelled' } : s
+            ),
+            isLoading: false,
+          }));
+          return true;
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Failed to cancel appointment',
+            isLoading: false 
+          });
+          return false;
+        }
       },
 
-      cancelDonation: async (scheduleId: string) => {
-        set({ isLoading: true });
-        await new Promise((resolve) => setTimeout(resolve, 600));
-
-        set((state) => ({
-          schedules: state.schedules.map((s) =>
-            s.id === scheduleId ? { ...s, status: 'CANCELLED' as const } : s
-          ),
-          isLoading: false,
-        }));
-
-        return true;
-      },
-
-      createBloodRequest: async (
-        recipientName: string,
-        bloodType: string,
-        requiredUnits: number,
-        hospitalName: string,
-        hospitalAddress: string,
-        latitude: number,
-        longitude: number,
-        urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH'
-      ) => {
-        set({ isLoading: true });
-        // Simulating delay
-        await new Promise((resolve) => setTimeout(resolve, 800));
-
-        const newRequest: BloodRequest = {
-          id: `req_${Date.now()}`,
-          hospitalName,
-          hospitalAddress,
-          latitude,
-          longitude,
-          bloodType,
-          urgency: urgencyLevel,
-          patientCondition: 'Emergency Case (Broadcasted)',
-          unitsRequired: requiredUnits,
-          unitsCollected: 0,
-          createdAt: new Date().toISOString(),
-          distanceKm: 2.1,
-        };
-
-        set((state) => ({
-          requests: [newRequest, ...state.requests],
-          isLoading: false,
-        }));
-
-        return true;
-      },
-
-      resetMockData: () => {
-        set({
-          requests: initialRequests,
-          schedules: initialSchedules,
-          invitations: initialInvitations,
-          isLoading: false,
-        });
+      searchByBloodType: async (bloodType: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          const requests = await requestService.searchByBloodType(bloodType);
+          set({ requests, isLoading: false });
+        } catch (error: any) {
+          set({ 
+            error: error.message || 'Search failed',
+            isLoading: false 
+          });
+        }
       },
     }),
     {

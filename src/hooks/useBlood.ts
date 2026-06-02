@@ -3,48 +3,56 @@ import { useAuthStore } from '@/stores/auth';
 
 export function useBlood() {
   const requests = useBloodStore((state) => state.requests);
-  const schedules = useBloodStore((state) => state.schedules);
-  const invitations = useBloodStore((state) => state.invitations);
+  const mySchedules = useBloodStore((state) => state.mySchedules);
+  const myInvitations = useBloodStore((state) => state.myInvitations);
   const isLoading = useBloodStore((state) => state.isLoading);
+  const error = useBloodStore((state) => state.error);
   
-  const fetchRequests = useBloodStore((state) => state.fetchRequests);
+  const fetchActiveRequests = useBloodStore((state) => state.fetchActiveRequests);
+  const fetchNearbyRequests = useBloodStore((state) => state.fetchNearbyRequests);
+  const fetchMySchedules = useBloodStore((state) => state.fetchMySchedules);
+  const fetchMyInvitations = useBloodStore((state) => state.fetchMyInvitations);
   const respondToInvitation = useBloodStore((state) => state.respondToInvitation);
-  const scheduleDonation = useBloodStore((state) => state.scheduleDonation);
-  const cancelDonation = useBloodStore((state) => state.cancelDonation);
-  const createBloodRequest = useBloodStore((state) => state.createBloodRequest);
-  const resetMockData = useBloodStore((state) => state.resetMockData);
+  const scheduleAppointment = useBloodStore((state) => state.scheduleAppointment);
+  const cancelAppointment = useBloodStore((state) => state.cancelAppointment);
+  const searchByBloodType = useBloodStore((state) => state.searchByBloodType);
 
   const donorUser = useAuthStore((state) => state.user);
 
-  // Filter requests matching the user's blood type (O- matches O- requests)
-  // O- is universal donor, but in mock we'll match specific compatible ones
+  // Filter requests matching the user's blood type
+  // O- is universal donor, but in our system we check exact matches or O- compatibility
   const compatibleRequests = requests.filter((req) => {
     // If no user, show all
-    if (!donorUser) return true;
+    if (!donorUser?.donor_profile) return true;
     
-    // Check if donor is O- (universal donor) or match exactly
-    if (donorUser.bloodType === 'O-') {
-      // O- is universal donor, matches all requests.
+    const donorBloodType = donorUser.donor_profile.blood_type;
+    
+    // Check blood type compatibility
+    if (donorBloodType === 'O-') {
+      // O- is universal donor, matches all requests
       return true;
     }
     
-    return req.bloodType === donorUser.bloodType;
+    return req.blood_type === donorBloodType;
   });
 
-  const pendingInvitations = invitations.filter((inv) => inv.status === 'PENDING');
+  const pendingInvitations = myInvitations.filter((inv) => inv.status === 'pending');
 
   return {
     requests: compatibleRequests,
     allRequests: requests,
-    schedules,
-    invitations: pendingInvitations,
-    allInvitations: invitations,
+    mySchedules,
+    myInvitations: pendingInvitations,
+    allInvitations: myInvitations,
     isLoading,
-    fetchRequests,
+    error,
+    fetchActiveRequests,
+    fetchNearbyRequests,
+    fetchMySchedules,
+    fetchMyInvitations,
     respondToInvitation,
-    scheduleDonation,
-    cancelDonation,
-    createBloodRequest,
-    resetMockData,
+    scheduleAppointment,
+    cancelAppointment,
+    searchByBloodType,
   };
 }
