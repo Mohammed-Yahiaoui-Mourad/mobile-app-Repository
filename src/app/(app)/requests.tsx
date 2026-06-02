@@ -7,26 +7,61 @@ import {
   FlatList,
   Modal,
   Alert,
+  TextInput,
+  Dimensions,
 } from 'react-native';
 import { useBlood } from '@/hooks/useBlood';
+import { BloodRequest } from '@/stores/blood';
+import { useAuth } from '@/hooks/useAuth';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing, Border, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Button } from 'react-native-paper';
 
 export default function RequestsScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { requests, allRequests, respondToInvitation } = useBlood();
+  const { user } = useAuth();
+  const { requests, allRequests, respondToInvitation, createBloodRequest } = useBlood();
   
-  const [filterType, setFilterType] = useState<'MATCHED' | 'ALL'>('MATCHED');
-  const [selectedReq, setSelectedReq] = useState<any>(null);
+  const [filterType, setFilterType] = useState<'LIVE' | 'CREATE' | 'MY'>('LIVE');
+  
+  // Create Request Form State
+  const [patientName, setPatientName] = useState('');
+  const [bloodType, setBloodType] = useState('O-');
+  const [unitsNeeded, setUnitsNeeded] = useState(1);
+  const [hospitalSearch, setHospitalSearch] = useState('');
+  const [selectedHospital, setSelectedHospital] = useState('Mustapha Pacha University Hospital');
+  const [urgencyLevel, setUrgencyLevel] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal confirm RSVP State
+  const [selectedReq, setSelectedReq] = useState<BloodRequest | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [timeLeft, setTimeLeft] = useState(180); // 180s TTL countdown
 
-  const currentRequests = filterType === 'MATCHED' ? requests : allRequests;
+  const hospitals = [
+    { name: 'Mustapha Pacha University Hospital', address: 'Place du 1er Mai, Sidi M\'Hamed, Algiers', lat: 36.7562, lon: 3.0564 },
+    { name: 'Nafissa Hamoud Hospital (Parnet)', address: 'Hussein Dey, Algiers', lat: 36.7389, lon: 3.0894 },
+    { name: 'Bologhine Hospital', address: 'Bologhine, Algiers', lat: 36.8012, lon: 3.0392 },
+  ];
+
+  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+  const filteredHospitals = hospitals.filter(h => 
+    h.name.toLowerCase().includes(hospitalSearch.toLowerCase())
+  );
+
+  // Live compatible matches list
+  const liveMatches = requests;
+
+  // Requests created by the user (simulated)
+  const myRequests = allRequests.filter(
+    (r) => r.patientCondition === 'Emergency Case (Broadcasted)' || r.id.startsWith('user_req_')
+  );
 
   // Countdown timer for invitation lock
   useEffect(() => {
@@ -45,7 +80,7 @@ export default function RequestsScreen() {
     return () => clearInterval(timer);
   }, [modalVisible, timeLeft]);
 
-  const openAcceptModal = (req: any) => {
+  const openAcceptModal = (req: BloodRequest) => {
     setSelectedReq(req);
     setTimeLeft(180); // Reset timer
     setModalVisible(true);
@@ -85,58 +120,287 @@ export default function RequestsScreen() {
     );
   };
 
+  const handleBroadcast = async () => {
+    if (!patientName.trim()) {
+      Alert.alert('Validation Error', 'Please enter the patient legal name');
+      return;
+    }
+
+    const hospitalObj = hospitals.find(h => h.name === selectedHospital);
+    if (!hospitalObj) return;
+
+    setIsSubmitting(true);
+    try {
+      const success = await createBloodRequest(
+        patientName,
+        bloodType,
+        unitsNeeded,
+        hospitalObj.name,
+        hospitalObj.address,
+        hospitalObj.lat,
+        hospitalObj.lon,
+        urgencyLevel
+      );
+
+      if (success) {
+        Alert.alert(
+          'Broadcast Sent! 🚨',
+          `Emergency request for ${bloodType} has been broadcasted to all matching donors.`,
+          [{ text: 'View Matches', onPress: () => {
+            setFilterType('MY');
+            // reset form
+            setPatientName('');
+            setHospitalSearch('');
+          }}]
+        );
+      }
+    } catch {
+      Alert.alert('Error', 'Unable to broadcast request.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case 'HIGH':
+        return theme.error;
+      case 'MEDIUM':
+        return theme.primary;
+      default:
+        return theme.secondary;
+    }
+  };
+
   return (
     <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
       
-      {/* Filter Tabs */}
+      {/* 3-Tab Filter Bar */}
       <View style={[styles.filterBar, { borderColor: theme.border }]}>
         <TouchableOpacity
-          style={[styles.filterTab, filterType === 'MATCHED' && { borderBottomColor: theme.primary }]}
-          onPress={() => setFilterType('MATCHED')}
+          style={[styles.filterTab, filterType === 'LIVE' && { borderBottomColor: theme.primary }]}
+          onPress={() => setFilterType('LIVE')}
         >
           <ThemedText
             style={[
               styles.filterText,
-              filterType === 'MATCHED' ? { color: theme.primary, fontWeight: '700' } : { color: theme.textSecondary }
+              filterType === 'LIVE' ? { color: theme.primary, fontWeight: '700' } : { color: theme.textSecondary }
             ]}
           >
-            Compatible Matches
+            Live Matches
           </ThemedText>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterTab, filterType === 'ALL' && { borderBottomColor: theme.primary }]}
-          onPress={() => setFilterType('ALL')}
+          style={[styles.filterTab, filterType === 'CREATE' && { borderBottomColor: theme.primary }]}
+          onPress={() => setFilterType('CREATE')}
         >
           <ThemedText
             style={[
               styles.filterText,
-              filterType === 'ALL' ? { color: theme.primary, fontWeight: '700' } : { color: theme.textSecondary }
+              filterType === 'CREATE' ? { color: theme.primary, fontWeight: '700' } : { color: theme.textSecondary }
             ]}
           >
-            All Live Requests
+            Create Request
+          </ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, filterType === 'MY' && { borderBottomColor: theme.primary }]}
+          onPress={() => setFilterType('MY')}
+        >
+          <ThemedText
+            style={[
+              styles.filterText,
+              filterType === 'MY' ? { color: theme.primary, fontWeight: '700' } : { color: theme.textSecondary }
+            ]}
+          >
+            My Requests
           </ThemedText>
         </TouchableOpacity>
       </View>
 
-      {/* List */}
-      {currentRequests.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="heart-dislike-outline" size={48} color={theme.textSecondary} />
-          <ThemedText style={{ color: theme.textSecondary, marginTop: Spacing.two, textAlign: 'center' }}>
-            No active blood requests found.
-          </ThemedText>
-        </View>
+      {/* Screen Views */}
+      {filterType === 'CREATE' ? (
+        <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
+          <ThemedView type="surface" style={styles.formCard}>
+            <ThemedText style={styles.formTitle}>Broadcast New Emergency Request</ThemedText>
+            
+            {/* Patient Name */}
+            <View style={styles.formGroup}>
+              <ThemedText type="smallBold" style={styles.formLabel}>Patient Name</ThemedText>
+              <TextInput
+                style={[styles.formInput, { borderColor: theme.border, color: theme.text }]}
+                placeholder="Full legal name"
+                placeholderTextColor={theme.textSecondary}
+                value={patientName}
+                onChangeText={setPatientName}
+              />
+            </View>
+
+            {/* Blood Type Grid Selection */}
+            <View style={styles.formGroup}>
+              <ThemedText type="smallBold" style={styles.formLabel}>Required Blood Type</ThemedText>
+              <View style={styles.bloodTypeGrid}>
+                {bloodTypes.map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.bloodTypeGridItem,
+                      { borderColor: theme.border },
+                      bloodType === type && { borderColor: theme.primary, backgroundColor: theme.primary + '1A' }
+                    ]}
+                    onPress={() => setBloodType(type)}
+                  >
+                    <ThemedText
+                      type="smallBold"
+                      style={bloodType === type ? { color: theme.primary } : { color: theme.textSecondary }}
+                    >
+                      {type}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Units counter */}
+            <View style={styles.formGroup}>
+              <ThemedText type="smallBold" style={styles.formLabel}>Units Needed (Pints)</ThemedText>
+              <View style={[styles.counterRow, { borderColor: theme.border }]}>
+                <TouchableOpacity
+                  style={styles.counterBtn}
+                  onPress={() => setUnitsNeeded(prev => Math.max(1, prev - 1))}
+                >
+                  <Ionicons name="remove" size={20} color={theme.text} />
+                </TouchableOpacity>
+                <ThemedText style={styles.counterText}>{unitsNeeded}</ThemedText>
+                <TouchableOpacity
+                  style={styles.counterBtn}
+                  onPress={() => setUnitsNeeded(prev => prev + 1)}
+                >
+                  <Ionicons name="add" size={20} color={theme.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Location Selector */}
+            <View style={styles.formGroup}>
+              <ThemedText type="smallBold" style={styles.formLabel}>Hospital Location</ThemedText>
+              <TextInput
+                style={[styles.formInput, { borderColor: theme.border, color: theme.text }]}
+                placeholder="Search registered hospitals..."
+                placeholderTextColor={theme.textSecondary}
+                value={hospitalSearch}
+                onChangeText={setHospitalSearch}
+              />
+              
+              <View style={styles.chipsContainer}>
+                {filteredHospitals.map((h) => (
+                  <TouchableOpacity
+                    key={h.name}
+                    style={[
+                      styles.hospitalChip,
+                      { borderColor: theme.border },
+                      selectedHospital === h.name && { borderColor: theme.primary, backgroundColor: theme.primary + '1A' }
+                    ]}
+                    onPress={() => setSelectedHospital(h.name)}
+                  >
+                    <ThemedText
+                      type="small"
+                      numberOfLines={1}
+                      style={[
+                        styles.chipText,
+                        selectedHospital === h.name ? { color: theme.primary, fontWeight: '700' } : { color: theme.textSecondary }
+                      ]}
+                    >
+                      {h.name.split(' ')[0]} {h.name.split(' ')[1]}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Urgency Selector */}
+            <View style={styles.formGroup}>
+              <ThemedText type="smallBold" style={styles.formLabel}>Urgency Level</ThemedText>
+              <View style={styles.urgencyGrid}>
+                <TouchableOpacity
+                  style={[
+                    styles.urgencyItem,
+                    { borderColor: theme.border },
+                    urgencyLevel === 'LOW' && { borderColor: theme.secondary, backgroundColor: theme.secondary + '1A' }
+                  ]}
+                  onPress={() => setUrgencyLevel('LOW')}
+                >
+                  <ThemedText type="smallBold" style={urgencyLevel === 'LOW' ? { color: theme.secondary } : { color: theme.textSecondary }}>LOW</ThemedText>
+                  <ThemedText style={styles.urgencyTime}>48h+</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.urgencyItem,
+                    { borderColor: theme.border },
+                    urgencyLevel === 'MEDIUM' && { borderColor: theme.primary, backgroundColor: theme.primary + '0D' }
+                  ]}
+                  onPress={() => setUrgencyLevel('MEDIUM')}
+                >
+                  <ThemedText type="smallBold" style={urgencyLevel === 'MEDIUM' ? { color: theme.primary } : { color: theme.textSecondary }}>MED</ThemedText>
+                  <ThemedText style={styles.urgencyTime}>24h</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.urgencyItem,
+                    { borderColor: theme.border },
+                    urgencyLevel === 'HIGH' && { borderColor: theme.error, backgroundColor: theme.error + '1A' }
+                  ]}
+                  onPress={() => setUrgencyLevel('HIGH')}
+                >
+                  <ThemedText type="smallBold" style={urgencyLevel === 'HIGH' ? { color: theme.error } : { color: theme.textSecondary }}>HIGH</ThemedText>
+                  <ThemedText style={styles.urgencyTime}>6h</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Banner */}
+            <View style={[styles.infoBanner, { backgroundColor: theme.error + '0D', borderColor: theme.error }]}>
+              <Ionicons name="information-circle-outline" size={20} color={theme.error} style={{ marginRight: 8 }} />
+              <ThemedText type="small" style={{ color: theme.error, flex: 1, lineHeight: 16 }}>
+                Lives depend on speed. Broadcasting your request alerts 50+ compatible donors in your area within 30 seconds.
+              </ThemedText>
+            </View>
+
+            {/* Submit */}
+            <Button
+              mode="contained"
+              onPress={handleBroadcast}
+              loading={isSubmitting}
+              disabled={isSubmitting}
+              style={[styles.submitRequestBtn, { backgroundColor: theme.primary }]}
+              contentStyle={{ height: 48 }}
+            >
+              Broadcast Request
+            </Button>
+          </ThemedView>
+        </ScrollView>
       ) : (
+        /* Requests Lists (Live compatible or My requests) */
         <FlatList
-          data={currentRequests}
+          data={filterType === 'LIVE' ? liveMatches : myRequests}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="heart-dislike-outline" size={48} color={theme.textSecondary} />
+              <ThemedText style={{ color: theme.textSecondary, marginTop: Spacing.two, textAlign: 'center' }}>
+                {filterType === 'LIVE' 
+                  ? 'No active matching requests in your area.' 
+                  : 'You have not created any emergency requests yet.'}
+              </ThemedText>
+            </View>
+          }
           renderItem={({ item }) => (
             <ThemedView
               type="surface"
               style={[
                 styles.card,
-                { borderLeftColor: item.urgency === 'HIGH' ? theme.error : theme.primary }
+                { borderLeftColor: getUrgencyColor(item.urgency) }
               ]}
             >
               <View style={styles.cardHeader}>
@@ -146,31 +410,8 @@ export default function RequestsScreen() {
                     {item.distanceKm}km away • {item.hospitalAddress.split(',')[1]?.trim() || 'Algiers'}
                   </ThemedText>
                 </View>
-                <View
-                  style={[
-                    styles.urgencyBadge,
-                    {
-                      backgroundColor:
-                        item.urgency === 'HIGH'
-                          ? theme.error + '1A'
-                          : item.urgency === 'MEDIUM'
-                          ? theme.primary + '1A'
-                          : theme.secondary + '1A',
-                    },
-                  ]}
-                >
-                  <ThemedText
-                    type="smallBold"
-                    style={{
-                      color:
-                        item.urgency === 'HIGH'
-                          ? theme.error
-                          : item.urgency === 'MEDIUM'
-                          ? theme.primary
-                          : theme.secondary,
-                      fontSize: 10,
-                    }}
-                  >
+                <View style={[styles.urgencyBadge, { backgroundColor: getUrgencyColor(item.urgency) + '1A' }]}>
+                  <ThemedText type="smallBold" style={{ color: getUrgencyColor(item.urgency), fontSize: 10 }}>
                     {item.urgency}
                   </ThemedText>
                 </View>
@@ -178,7 +419,7 @@ export default function RequestsScreen() {
 
               <View style={styles.cardBody}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.conditionLabel}>
-                  Patient Condition:
+                  Patient Condition / Details:
                 </ThemedText>
                 <ThemedText type="small" style={styles.conditionText}>
                   {item.patientCondition}
@@ -198,7 +439,7 @@ export default function RequestsScreen() {
                       style={[
                         styles.progressBarFill,
                         {
-                          backgroundColor: item.urgency === 'HIGH' ? theme.error : theme.primary,
+                          backgroundColor: getUrgencyColor(item.urgency),
                           width: `${(item.unitsCollected / item.unitsRequired) * 100}%`,
                         },
                       ]}
@@ -207,20 +448,22 @@ export default function RequestsScreen() {
                 </View>
               </View>
 
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  style={[styles.declineBtn, { borderColor: theme.border }]}
-                  onPress={() => handleDeclineRequest(item.id)}
-                >
-                  <ThemedText type="smallBold" themeColor="textSecondary">Decline</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.acceptBtn, { backgroundColor: theme.primary }]}
-                  onPress={() => openAcceptModal(item)}
-                >
-                  <ThemedText style={styles.acceptBtnText}>Accept RSVP</ThemedText>
-                </TouchableOpacity>
-              </View>
+              {filterType === 'LIVE' && (
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={[styles.declineBtn, { borderColor: theme.border }]}
+                    onPress={() => handleDeclineRequest(item.id)}
+                  >
+                    <ThemedText type="smallBold" themeColor="textSecondary">Decline</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.acceptBtn, { backgroundColor: theme.primary }]}
+                    onPress={() => openAcceptModal(item)}
+                  >
+                    <ThemedText style={styles.acceptBtnText}>Accept RSVP</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              )}
             </ThemedView>
           )}
         />
@@ -236,7 +479,7 @@ export default function RequestsScreen() {
         >
           <View style={styles.modalOverlay}>
             <ThemedView type="surface" style={styles.modalCard}>
-              <View style={styles.modalHeader}>
+              <View style={styles.modalCardHeader}>
                 <ThemedText style={[styles.modalTitle, { color: theme.error }]}>
                   Emergency RSVP Confirmation
                 </ThemedText>
@@ -309,6 +552,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 1,
     height: 50,
+    backgroundColor: '#ffffff',
   },
   filterTab: {
     flex: 1,
@@ -318,7 +562,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   listContainer: {
@@ -429,7 +673,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 5,
   },
-  modalHeader: {
+  modalCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -492,5 +736,117 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 14,
+  },
+  // Form Scroll & styling
+  formScroll: {
+    padding: Spacing.three,
+  },
+  formCard: {
+    padding: Spacing.four,
+    borderRadius: Border.radiusMd,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    gap: Spacing.three,
+  },
+  formTitle: {
+    ...Typography.headlineMD,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: Spacing.two,
+  },
+  formGroup: {
+    gap: Spacing.one,
+  },
+  formLabel: {
+    fontSize: 14,
+  },
+  formInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: Border.radiusDefault,
+    paddingHorizontal: Spacing.three,
+    fontSize: 14,
+    backgroundColor: '#ffffff',
+  },
+  bloodTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  bloodTypeGridItem: {
+    width: (Dimensions.get('window').width - Spacing.four * 2 - Spacing.four * 2 - Spacing.two * 4) / 4,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: Border.radiusDefault,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  counterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 48,
+    borderWidth: 1,
+    borderRadius: Border.radiusDefault,
+    backgroundColor: '#ffffff',
+  },
+  counterBtn: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  counterText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
+  hospitalChip: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Border.radiusFull,
+    borderWidth: 1,
+    maxWidth: 150,
+  },
+  chipText: {
+    fontSize: 11,
+  },
+  urgencyGrid: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  urgencyItem: {
+    flex: 1,
+    height: 60,
+    borderWidth: 1,
+    borderRadius: Border.radiusDefault,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.one,
+  },
+  urgencyTime: {
+    fontSize: 10,
+    color: '#626567',
+    marginTop: 2,
+  },
+  infoBanner: {
+    borderWidth: 1,
+    borderRadius: Border.radiusDefault,
+    padding: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  submitRequestBtn: {
+    marginTop: Spacing.two,
+    borderRadius: Border.radiusDefault,
   },
 });

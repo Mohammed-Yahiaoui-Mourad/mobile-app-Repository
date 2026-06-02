@@ -46,6 +46,16 @@ interface BloodState {
   respondToInvitation: (invitationId: string, accept: boolean) => Promise<boolean>;
   scheduleDonation: (hospitalName: string, hospitalAddress: string, date: string, timeSlot: string) => Promise<boolean>;
   cancelDonation: (scheduleId: string) => Promise<boolean>;
+  createBloodRequest: (
+    recipientName: string,
+    bloodType: string,
+    requiredUnits: number,
+    hospitalName: string,
+    hospitalAddress: string,
+    latitude: number,
+    longitude: number,
+    urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH'
+  ) => Promise<boolean>;
   resetMockData: () => void;
 }
 
@@ -210,6 +220,43 @@ export const useBloodStore = create<BloodState>()(
           schedules: state.schedules.map((s) =>
             s.id === scheduleId ? { ...s, status: 'CANCELLED' as const } : s
           ),
+          isLoading: false,
+        }));
+
+        return true;
+      },
+
+      createBloodRequest: async (
+        recipientName: string,
+        bloodType: string,
+        requiredUnits: number,
+        hospitalName: string,
+        hospitalAddress: string,
+        latitude: number,
+        longitude: number,
+        urgencyLevel: 'LOW' | 'MEDIUM' | 'HIGH'
+      ) => {
+        set({ isLoading: true });
+        // Simulating delay
+        await new Promise((resolve) => setTimeout(resolve, 800));
+
+        const newRequest: BloodRequest = {
+          id: `req_${Date.now()}`,
+          hospitalName,
+          hospitalAddress,
+          latitude,
+          longitude,
+          bloodType,
+          urgency: urgencyLevel,
+          patientCondition: 'Emergency Case (Broadcasted)',
+          unitsRequired: requiredUnits,
+          unitsCollected: 0,
+          createdAt: new Date().toISOString(),
+          distanceKm: 2.1,
+        };
+
+        set((state) => ({
+          requests: [newRequest, ...state.requests],
           isLoading: false,
         }));
 

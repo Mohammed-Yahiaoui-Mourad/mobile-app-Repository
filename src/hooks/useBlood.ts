@@ -11,6 +11,7 @@ export function useBlood() {
   const respondToInvitation = useBloodStore((state) => state.respondToInvitation);
   const scheduleDonation = useBloodStore((state) => state.scheduleDonation);
   const cancelDonation = useBloodStore((state) => state.cancelDonation);
+  const createBloodRequest = useBloodStore((state) => state.createBloodRequest);
   const resetMockData = useBloodStore((state) => state.resetMockData);
 
   const donorUser = useAuthStore((state) => state.user);
@@ -43,6 +44,7 @@ export function useBlood() {
     respondToInvitation,
     scheduleDonation,
     cancelDonation,
+    createBloodRequest,
     resetMockData,
   };
 }
