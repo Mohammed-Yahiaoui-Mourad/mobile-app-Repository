@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Amal Blood - Donor Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(224, 227, 230, 0.5);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary": "#9e001f",
+                      "tertiary-fixed": "#6ffbbe",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-fixed-variant": "#005236",
+                      "surface-container-low": "#eff4ff",
+                      "surface-container-highest": "#d9e3f6",
+                      "secondary-fixed-dim": "#c4c7ca",
+                      "primary-container": "#c8102e",
+                      "surface-tint": "#bf0229",
+                      "on-surface-variant": "#5c403f",
+                      "error": "#ba1a1a",
+                      "on-tertiary-fixed": "#002113",
+                      "inverse-primary": "#ffb3b1",
+                      "surface-variant": "#d9e3f6",
+                      "inverse-surface": "#27313f",
+                      "on-primary-container": "#ffdad8",
+                      "tertiary-container": "#00734e",
+                      "surface-container": "#e6eeff",
+                      "on-error": "#ffffff",
+                      "surface-dim": "#d0dbed",
+                      "on-tertiary-container": "#6efbbd",
+                      "surface-container-high": "#dee9fc",
+                      "inverse-on-surface": "#eaf1ff",
+                      "on-primary-fixed": "#410007",
+                      "on-background": "#121c2a",
+                      "primary-fixed-dim": "#ffb3b1",
+                      "on-secondary-fixed-variant": "#44474a",
+                      "surface-container-lowest": "#ffffff",
+                      "outline-variant": "#e5bdbb",
+                      "tertiary-fixed-dim": "#4edea3",
+                      "on-secondary-container": "#626567",
+                      "on-secondary-fixed": "#191c1e",
+                      "on-surface": "#121c2a",
+                      "background": "#f8f9ff",
+                      "surface-bright": "#f8f9ff",
+                      "on-primary": "#ffffff",
+                      "on-primary-fixed-variant": "#92001c",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#00583b",
+                      "outline": "#906f6e",
+                      "secondary-fixed": "#e0e3e6",
+                      "surface": "#f8f9ff",
+                      "primary-fixed": "#ffdad8",
+                      "on-secondary": "#ffffff",
+                      "secondary": "#5b5f61"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "16px",
+                      "container-max-width": "1280px",
+                      "margin-desktop": "32px",
+                      "unit-xs": "4px",
+                      "unit-sm": "8px",
+                      "unit-md": "16px",
+                      "unit-lg": "24px",
+                      "unit-xl": "48px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "label-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "headline-xl": ["Inter"]
+              },
+              "fontSize": {
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}],
+                      "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- TopAppBar (Mapped from Shared Components) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface shadow-sm">
+<div class="flex items-center gap-unit-md">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container-highest border border-outline-variant">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A professional portrait of a kind, middle-aged man with a warm smile, set against a blurred medical facility background with soft blue and white tones. The lighting is bright and natural, reflecting a clean and clinical yet compassionate atmosphere. The man represents a dedicated blood donor, embodying trust and community service within a high-end health app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCprNotNjj9z48o-Aav9FJgDuXGOII5sshHebTYbmlCTrQFJf_f86xEADoaOGQipTMovxP7I2skC6BH1rr9c-8JkTa1GRH9U8afL22z1rfygTZH_JxeUKvX6sgmdzCh9Bitjup_KOJBDLOxWE8u2CMEIPRqg_MoSSFgSssV7J8xo84FfjV5NVrj1XDNYzpnZ4hZbsGLGXkPLbbdomCB5kf1lpNty9KZR1ncshl1YS7CqnnpYygpF-RaklPyuTtLDOaxxJGtPMzpJck"/>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Welcome back</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Hello John</h1>
+</div>
+</div>
+<button class="material-symbols-outlined text-primary p-2 rounded-full hover:bg-surface-container-high transition-colors active:scale-95">
+            notifications
+        </button>
+</header>
+<main class="pt-24 px-margin-mobile max-w-container-max-width mx-auto space-y-unit-lg">
+<!-- Stats Grid - Bento Style -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-unit-md">
+<!-- Blood Type -->
+<div class="glass-card p-unit-md rounded-xl shadow-sm border-l-4 border-primary flex flex-col justify-between hover:shadow-md transition-shadow">
+<span class="font-label-md text-label-md text-secondary">Blood Type</span>
+<div class="flex items-end justify-between mt-unit-sm">
+<span class="text-headline-lg font-headline-lg text-primary">A+</span>
+<span class="material-symbols-outlined text-primary" data-weight="fill" style="font-variation-settings: 'FILL' 1;">bloodtype</span>
+</div>
+</div>
+<!-- Eligibility -->
+<div class="glass-card p-unit-md rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<span class="font-label-md text-label-md text-secondary">Eligibility</span>
+<div class="mt-unit-sm">
+<div class="inline-flex px-unit-sm py-1 bg-tertiary/10 rounded-full">
+<span class="text-tertiary font-label-sm text-label-sm">Eligible</span>
+</div>
+<p class="font-body-sm text-body-sm mt-1 text-on-surface-variant">Ready to donate</p>
+</div>
+</div>
+<!-- Availability Toggle Card -->
+<div class="glass-card p-unit-md rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<span class="font-label-md text-label-md text-secondary">Availability</span>
+<div class="flex items-center justify-between mt-unit-sm">
+<span class="font-label-md text-label-md font-bold text-on-surface">Active</span>
+<button class="relative inline-flex h-6 w-11 items-center rounded-full bg-primary transition-colors focus:outline-none" id="availabilityToggle">
+<span class="inline-block h-4 w-4 translate-x-6 transform rounded-full bg-white transition-transform"></span>
+</button>
+</div>
+</div>
+<!-- Last Donation -->
+<div class="glass-card p-unit-md rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+<span class="font-label-md text-label-md text-secondary">Last Donation</span>
+<div class="mt-unit-sm">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">2 months</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">ago</p>
+</div>
+</div>
+</section>
+<!-- Emergency Section -->
+<section class="space-y-unit-md">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">Urgent Nearby Requests</h2>
+<a class="text-primary font-label-md text-label-md flex items-center gap-1" href="#">
+                    View All
+                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+<!-- Scrolling List -->
+<div class="flex overflow-x-auto gap-unit-md pb-unit-md hide-scrollbar -mx-margin-mobile px-margin-mobile">
+<!-- High Urgency Card -->
+<div class="min-w-[300px] md:min-w-[400px] glass-card rounded-xl overflow-hidden shadow-lg border-l-4 border-error relative">
+<div class="absolute top-4 right-4">
+<div class="bg-error-container text-on-error-container px-unit-sm py-1 rounded-full font-label-sm text-label-sm font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm animate-pulse">priority_high</span>
+                            CRITICAL
+                        </div>
+</div>
+<div class="p-unit-md">
+<div class="flex items-center gap-unit-sm mb-unit-sm">
+<div class="w-12 h-12 bg-error-container/20 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">local_hospital</span>
+</div>
+<div>
+<h3 class="font-label-md text-label-md font-bold text-on-surface">City General Hospital</h3>
+<p class="text-body-sm text-on-surface-variant">1.2km away • Emergency Unit</p>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-lg p-unit-md flex items-center justify-between mb-unit-md">
+<div>
+<span class="font-label-sm text-label-sm text-secondary">Required Type</span>
+<p class="text-headline-md font-headline-md font-bold text-error">O-</p>
+</div>
+<div class="text-right">
+<span class="font-label-sm text-label-sm text-secondary">Urgency Level</span>
+<p class="font-label-md text-label-md font-bold text-error">Immediate</p>
+</div>
+</div>
+<div class="flex gap-unit-sm">
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md font-bold active:scale-95 transition-transform">
+                                Accept Request
+                            </button>
+<button class="w-12 h-12 flex items-center justify-center border border-outline-variant rounded-lg hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary">directions</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Secondary Urgent Card -->
+<div class="min-w-[300px] md:min-w-[400px] glass-card rounded-xl overflow-hidden shadow-sm border-l-4 border-primary relative">
+<div class="p-unit-md">
+<div class="flex items-center gap-unit-sm mb-unit-sm">
+<div class="w-12 h-12 bg-primary-container/10 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">local_hospital</span>
+</div>
+<div>
+<h3 class="font-label-md text-label-md font-bold text-on-surface">St. Mary Medical Center</h3>
+<p class="text-body-sm text-on-surface-variant">2.8km away • Pediatric Ward</p>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-lg p-unit-md flex items-center justify-between mb-unit-md">
+<div>
+<span class="font-label-sm text-label-sm text-secondary">Required Type</span>
+<p class="text-headline-md font-headline-md font-bold text-primary">A+</p>
+</div>
+<div class="text-right">
+<span class="font-label-sm text-label-sm text-secondary">Status</span>
+<p class="font-label-md text-label-md font-bold text-on-surface">High Priority</p>
+</div>
+</div>
+<div class="flex gap-unit-sm">
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md font-bold active:scale-95 transition-transform">
+                                Accept Request
+                            </button>
+<button class="w-12 h-12 flex items-center justify-center border border-outline-variant rounded-lg hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-secondary">directions</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Interactive Map Preview Card -->
+<section class="glass-card rounded-xl overflow-hidden shadow-sm">
+<div class="p-unit-md border-b border-outline-variant flex items-center justify-between">
+<h2 class="font-label-md text-label-md font-bold text-on-surface">Nearest Donation Points</h2>
+<span class="material-symbols-outlined text-secondary">map</span>
+</div>
+<div class="h-48 relative bg-surface-container-highest">
+<img alt="Map showing hospital locations" class="w-full h-full object-cover opacity-80" data-alt="A clean, minimalist digital map of a city in a light mode aesthetic, featuring soft gray roads and subtle pastel-colored neighborhoods. Strategic medical icons in bright red mark hospital locations, with a pulsing blue dot representing the user's current position. The overall design is professional and high-tech, using a sophisticated corporate color palette for clarity and ease of navigation." data-location="New York City" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMpOmLV5nEmGZMr5mLBZ8YliSmdmJVZQVedTmEwThdJ0I2KQdkPHPeQ4XYAwhA527o--f1ODddVv2iFyE6cpjpnlnMaMMT5z-eRoia4gKKLGBLi7hBI_vg5BHb6Op9x6FZM96icB35B5kwm3Ev3LFVoVrAr9h3CWq2YpCvtfi9TFnCz-1m8qoaaLDQgLJPEoFRLdOll84EZQQApTFQnTD-b8xMTz_rGRVHfcGIqToIZzpBgSlB_XEjOTR8hS2mvxivPbHZRq_v3ZE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+<button class="absolute bottom-4 right-4 bg-surface text-primary p-unit-sm rounded-full shadow-lg flex items-center gap-2 font-label-sm text-label-sm font-bold">
+<span class="material-symbols-outlined text-sm">my_location</span>
+                    Recenter
+                </button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mapped from Shared Components) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 pb-safe px-2 bg-surface shadow-lg border-t border-secondary-container">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center text-primary font-bold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<!-- Schedule -->
+<a class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-colors rounded-lg px-2" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-sm text-label-sm">Schedule</span>
+</a>
+<!-- Requests -->
+<a class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-colors rounded-lg px-2" href="#">
+<span class="material-symbols-outlined">bloodtype</span>
+<span class="font-label-sm text-label-sm">Requests</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-secondary hover:bg-surface-container-low transition-colors rounded-lg px-2" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<!-- Contextual FAB (Logic applied) -->
+<button class="fixed right-6 bottom-24 w-14 h-14 bg-primary text-on-primary rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-transform z-40">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+<script>
+        // Toggle Logic for Availability
+        const toggleBtn = document.getElementById('availabilityToggle');
+        const toggleKnob = toggleBtn.querySelector('span');
+        let isActive = true;
+
+        toggleBtn.addEventListener('click', () => {
+            isActive = !isActive;
+            if (isActive) {
+                toggleBtn.classList.replace('bg-secondary', 'bg-primary');
+                toggleKnob.classList.replace('translate-x-1', 'translate-x-6');
+                toggleBtn.previousElementSibling.textContent = 'Active';
+                toggleBtn.previousElementSibling.classList.replace('text-secondary', 'text-on-surface');
+            } else {
+                toggleBtn.classList.replace('bg-primary', 'bg-secondary');
+                toggleKnob.classList.replace('translate-x-6', 'translate-x-1');
+                toggleBtn.previousElementSibling.textContent = 'Paused';
+                toggleBtn.previousElementSibling.classList.replace('text-on-surface', 'text-secondary');
+            }
+        });
+
+        // Atmospheric Micro-interaction for Emergency cards
+        const cards = document.querySelectorAll('.glass-card');
+        cards.forEach(card => {
+            card.addEventListener('touchstart', () => {
+                card.style.transform = 'scale(0.98)';
+                card.style.transition = 'transform 0.1s ease';
+            });
+            card.addEventListener('touchend', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>
