@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Portal, Modal as PaperModal, Card, Button } from 'react-native-paper';
+import { api } from '@/lib/api';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -32,32 +33,49 @@ export default function HomeScreen() {
   const [bloodType, setBloodType] = useState('O-');
   const [unitsNeeded, setUnitsNeeded] = useState(1);
   const [hospitalSearch, setHospitalSearch] = useState('');
-  const [selectedHospital, setSelectedHospital] = useState('Mustapha Pacha University Hospital');
+  const [selectedHospital, setSelectedHospital] = useState('');
   const [urgencyLevel, setUrgencyLevel] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isForSelf, setIsForSelf] = useState(false);
 
-  const hospitals = [
-    { name: 'Mustapha Pacha University Hospital', address: 'Place du 1er Mai, Sidi M\'Hamed, Algiers', lat: 36.7562, lon: 3.0564 },
-    { name: 'Nafissa Hamoud Hospital (Parnet)', address: 'Hussein Dey, Algiers', lat: 36.7389, lon: 3.0894 },
-    { name: 'Bologhine Hospital', address: 'Bologhine, Algiers', lat: 36.8012, lon: 3.0392 },
-  ];
+  const [hospitals, setHospitals] = useState<any[]>([]);
+  const [isHospitalsLoading, setIsHospitalsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchHospitals = async () => {
+      try {
+        setIsHospitalsLoading(true);
+        const res = await api.get('/api/requests/hospitals');
+        if (res.data) {
+          setHospitals(res.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch hospitals:', error);
+      } finally {
+        setIsHospitalsLoading(false);
+      }
+    };
+    fetchHospitals();
+  }, []);
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   const filteredHospitals = hospitals.filter(h => 
     h.name.toLowerCase().includes(hospitalSearch.toLowerCase())
-  );
+  ).slice(0, 5); // Limit autocomplete to 5 for UI space
 
   const openRequestForm = (forSelf: boolean) => {
-    if (forSelf) {
-      setPatientName(user?.name || 'Sarah Connor');
-      setBloodType(user?.bloodType || 'O-');
+    setIsForSelf(forSelf);
+    if (forSelf && user) {
+      setPatientName(user.name);
+      setBloodType(user.bloodType || 'O-');
     } else {
       setPatientName('');
       setBloodType('O-');
     }
     setUnitsNeeded(1);
-    setSelectedHospital('Mustapha Pacha University Hospital');
+    setSelectedHospital('');
+    setHospitalSearch('');
     setUrgencyLevel('HIGH');
     setRequestModalVisible(true);
   };
@@ -79,9 +97,9 @@ export default function HomeScreen() {
         bloodType,
         unitsNeeded,
         hospitalObj.name,
-        hospitalObj.address,
-        hospitalObj.lat,
-        hospitalObj.lon,
+        hospitalObj.address || hospitalObj.region || 'Algeria',
+        hospitalObj.latitude,
+        hospitalObj.longitude,
         urgencyLevel
       );
 
@@ -312,11 +330,12 @@ export default function HomeScreen() {
               <View style={styles.formGroup}>
                 <ThemedText type="smallBold" style={styles.formLabel}>Patient Name</ThemedText>
                 <TextInput
-                  style={[styles.modalInput, { borderColor: theme.border, color: theme.text }]}
+                  style={[styles.modalInput, { borderColor: theme.border, color: theme.text }, isForSelf && { opacity: 0.7, backgroundColor: theme.border + '33' }]}
                   placeholder="Full legal name"
                   placeholderTextColor={theme.textSecondary}
                   value={patientName}
                   onChangeText={setPatientName}
+                  editable={!isForSelf}
                 />
               </View>
 
@@ -330,9 +349,11 @@ export default function HomeScreen() {
                       style={[
                         styles.bloodTypeGridItem,
                         { borderColor: theme.border },
-                        bloodType === type && { borderColor: theme.primary, backgroundColor: theme.primary + '1A' }
+                        bloodType === type && { borderColor: theme.primary, backgroundColor: theme.primary + '1A' },
+                        isForSelf && bloodType !== type && { opacity: 0.3 }
                       ]}
-                      onPress={() => setBloodType(type)}
+                      onPress={() => !isForSelf && setBloodType(type)}
+                      disabled={isForSelf}
                     >
                       <ThemedText
                         type="smallBold"
@@ -375,31 +396,42 @@ export default function HomeScreen() {
                   value={hospitalSearch}
                   onChangeText={setHospitalSearch}
                 />
-                
-                <View style={styles.chipsContainer}>
-                  {filteredHospitals.map((h) => (
-                    <TouchableOpacity
-                      key={h.name}
-                      style={[
-                        styles.hospitalChip,
-                        { borderColor: theme.border },
-                        selectedHospital === h.name && { borderColor: theme.primary, backgroundColor: theme.primary + '1A' }
-                      ]}
-                      onPress={() => setSelectedHospital(h.name)}
-                    >
-                      <ThemedText
-                        type="small"
-                        numberOfLines={1}
-                        style={[
-                          styles.chipText,
-                          selectedHospital === h.name ? { color: theme.primary, fontWeight: '700' } : { color: theme.textSecondary }
-                        ]}
-                      >
-                        {h.name.split(' ')[0]} {h.name.split(' ')[1]}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                {hospitalSearch.length > 0 && selectedHospital !== hospitalSearch && (
+                  <View style={[styles.hospitalListContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                    <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled={true}>
+                      {filteredHospitals.length > 0 ? (
+                        filteredHospitals.map((h) => (
+                          <TouchableOpacity
+                            key={h.name}
+                            style={[
+                              styles.hospitalListItem,
+                              selectedHospital === h.name && { backgroundColor: theme.primary + '1A' }
+                            ]}
+                            onPress={() => {
+                              setSelectedHospital(h.name);
+                              setHospitalSearch(h.name);
+                            }}
+                          >
+                            <Ionicons name="medical" size={16} color={selectedHospital === h.name ? theme.primary : theme.textSecondary} style={{ marginRight: 8 }} />
+                            <ThemedText
+                              type="small"
+                              style={[
+                                styles.hospitalListText,
+                                selectedHospital === h.name ? { color: theme.primary, fontWeight: '700' } : { color: theme.text }
+                              ]}
+                            >
+                              {h.name}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        ))
+                      ) : (
+                        <View style={styles.hospitalListItem}>
+                          <ThemedText type="small" themeColor="textSecondary">No hospitals found</ThemedText>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
 
               {/* Urgency Selector */}
@@ -743,21 +775,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
-  hospitalChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Border.radiusFull,
+  hospitalListContainer: {
     borderWidth: 1,
-    maxWidth: 150,
+    borderRadius: Border.radiusDefault,
+    marginTop: 4,
+    maxHeight: 150,
+    overflow: 'hidden',
   },
-  chipText: {
-    fontSize: 11,
+  hospitalListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.three,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  hospitalListText: {
+    flex: 1,
+    fontSize: 14,
   },
   urgencyGrid: {
     flexDirection: 'row',

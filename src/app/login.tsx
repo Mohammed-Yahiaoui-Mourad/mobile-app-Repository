@@ -45,7 +45,7 @@ export default function LoginScreen() {
 
     setError(null);
     try {
-      const success = await login(email);
+      const success = await login(email, password);
       if (success) {
         // Successful login, navigate to app home screen
         router.replace('/(app)/home' as any);

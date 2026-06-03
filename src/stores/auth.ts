@@ -208,6 +208,35 @@ export const useAuthStore = create<AuthState>()(
           set({ isAuthenticated: false, isLoading: false });
         }
       },
+      submitPreScreen: async (answers: {
+        has_recent_tattoo_or_piercing: boolean;
+        has_infectious_diseases: boolean;
+        is_taking_antibiotics: boolean;
+        has_traveled_malaria_zone_recently: boolean;
+        is_feeling_unwell: boolean;
+      }) => {
+        set({ isLoading: true });
+        try {
+          const res = await api.post('/api/donations/profile/pre-screen', answers);
+          set((state) => {
+            if (!state.user) return state;
+            return {
+              user: {
+                ...state.user,
+                healthClearanceToken: res.health_clearance_token || null,
+                healthCheckedAt: res.health_checked_at || null,
+                isAvailable: res.is_available,
+              },
+            };
+          });
+          set({ isLoading: false });
+          return res;
+        } catch (error) {
+          console.error('Pre-screen submission failed:', error);
+          set({ isLoading: false });
+          throw error;
+        }
+      },
     }),
     {
       name: 'amal-auth-storage',
