@@ -20,7 +20,7 @@ import { useRouter } from 'expo-router';
 export default function RequestsScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { requests, allRequests, respondToInvitation } = useBlood();
+  const { requests, myRequests, respondToInvitation, fetchRequests } = useBlood();
   
   const [filterType, setFilterType] = useState<'LIVE' | 'MY'>('LIVE');
 
@@ -32,10 +32,10 @@ export default function RequestsScreen() {
   // Live compatible matches list
   const liveMatches = requests;
 
-  // Requests created by the user (simulated)
-  const myRequests = allRequests.filter(
-    (r) => r.patientCondition === 'Emergency Case (Broadcasted)' || r.id.startsWith('user_req_')
-  );
+  // Fetch requests on mount
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
   // Countdown timer for invitation lock
   useEffect(() => {

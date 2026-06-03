@@ -5,9 +5,11 @@ export function useBlood() {
   const requests = useBloodStore((state) => state.requests);
   const schedules = useBloodStore((state) => state.schedules);
   const invitations = useBloodStore((state) => state.invitations);
+  const myRequests = useBloodStore((state) => state.myRequests);
   const isLoading = useBloodStore((state) => state.isLoading);
   
   const fetchRequests = useBloodStore((state) => state.fetchRequests);
+  const fetchMyRequests = useBloodStore((state) => state.fetchMyRequests);
   const respondToInvitation = useBloodStore((state) => state.respondToInvitation);
   const scheduleDonation = useBloodStore((state) => state.scheduleDonation);
   const cancelDonation = useBloodStore((state) => state.cancelDonation);
@@ -36,11 +38,13 @@ export function useBlood() {
   return {
     requests: compatibleRequests,
     allRequests: requests,
+    myRequests,
     schedules,
     invitations: pendingInvitations,
     allInvitations: invitations,
     isLoading,
     fetchRequests,
+    fetchMyRequests,
     respondToInvitation,
     scheduleDonation,
     cancelDonation,

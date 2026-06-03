@@ -8,6 +8,7 @@ export function useAuth() {
   const logout = useAuthStore((state) => state.logout);
   const updateAvailability = useAuthStore((state) => state.updateAvailability);
   const updateHealthClearance = useAuthStore((state) => state.updateHealthClearance);
+  const submitPreScreen = useAuthStore((state) => state.submitPreScreen);
 
   return {
     user,
@@ -17,5 +18,6 @@ export function useAuth() {
     logout,
     updateAvailability,
     updateHealthClearance,
+    submitPreScreen,
   };
 }

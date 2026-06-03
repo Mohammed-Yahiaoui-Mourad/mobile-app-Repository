@@ -21,7 +21,7 @@ interface PreScreenModalProps {
 
 export function PreScreenModal({ visible, onClose }: PreScreenModalProps) {
   const theme = useTheme();
-  const { updateHealthClearance, updateAvailability } = useAuth();
+  const { submitPreScreen } = useAuth();
   
   // Questionnaire Answers State
   const [answers, setAnswers] = useState<Record<number, boolean>>({});
@@ -49,39 +49,38 @@ export function PreScreenModal({ visible, onClose }: PreScreenModalProps) {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Check if all questions are answered
     if (Object.keys(answers).length < questions.length) {
       Alert.alert('Incomplete', 'Please answer all questions before submitting.');
       return;
     }
 
-    // If any question is answered YES, the donor fails the pre-screening
-    const hasFlags = Object.values(answers).some((val) => val === true);
+    try {
+      // Map frontend question IDs to backend schema
+      const response = await submitPreScreen({
+        has_recent_tattoo_or_piercing: answers[3] || false,
+        has_infectious_diseases: false,
+        is_taking_antibiotics: answers[2] || false,
+        has_traveled_malaria_zone_recently: false,
+        is_feeling_unwell: answers[2] || answers[4] || false,
+      });
 
-    if (hasFlags) {
-      // Fail Pre-screening: block availability and set clearance to null
-      updateHealthClearance(null, null);
-      updateAvailability(false);
-      
-      Alert.alert(
-        'Clearance Denied',
-        'Based on your responses, you do not meet the safety requirements to donate blood at this time. Your donor availability has been paused.',
-        [{ text: 'Understand', onPress: onClose }]
-      );
-    } else {
-      // Pass Pre-screening: set clearance token and date
-      const mockToken = `CLR-${Math.floor(100000 + Math.random() * 900000)}`;
-      const currentDate = new Date().toISOString();
-      
-      updateHealthClearance(mockToken, currentDate);
-      updateAvailability(true);
-
-      Alert.alert(
-        'Clearance Approved!',
-        `Congratulations! You have passed the questionnaire clearance. Your Clearance Code is: ${mockToken}`,
-        [{ text: 'Great!', onPress: onClose }]
-      );
+      if (response && response.cleared) {
+        Alert.alert(
+          'Clearance Approved!',
+          `Congratulations! You have passed the questionnaire clearance. Your Clearance Code is: ${response.health_clearance_token}`,
+          [{ text: 'Great!', onPress: onClose }]
+        );
+      } else {
+        Alert.alert(
+          'Clearance Denied',
+          'Based on your responses, you do not meet the safety requirements to donate blood at this time. Your donor availability has been paused.',
+          [{ text: 'Understand', onPress: onClose }]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to submit pre-screening questionnaire.');
     }
     
     // Reset answers
